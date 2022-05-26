@@ -1114,6 +1114,17 @@ func (c *cmdable) LRange(key string, start, stop int64) *StringSliceCmd {
 	return cmd
 }
 
+func (c *cmdable) LRanges(key string, start, stop int64) *ByteSliceCmd {
+	cmd := NewByteSliceCmd(
+		"lrange",
+		key,
+		start,
+		stop,
+	)
+	c.process(cmd)
+	return cmd
+}
+
 func (c *cmdable) LRem(key string, count int64, value interface{}) *IntCmd {
 	cmd := NewIntCmd("lrem", key, count, value)
 	c.process(cmd)

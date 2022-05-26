@@ -672,6 +672,45 @@ func (cmd *FloatCmd) readReply(rd *proto.Reader) error {
 }
 
 //------------------------------------------------------------------------------
+type ByteSliceCmd struct {
+	baseCmd
+
+	val []byte
+}
+
+var _ Cmder = (*ByteSliceCmd)(nil)
+
+func NewByteSliceCmd(args ...interface{}) *ByteSliceCmd {
+	return &ByteSliceCmd{
+		baseCmd: baseCmd{_args: args},
+	}
+}
+func (cmd *ByteSliceCmd) Val() []byte {
+	return cmd.val
+}
+
+func (cmd *ByteSliceCmd) Result() ([]byte, error) {
+	return cmd.Val(), cmd.Err()
+}
+
+func (cmd *ByteSliceCmd) String() string {
+	return cmdString(cmd, cmd.val)
+}
+
+func (cmd *ByteSliceCmd) readReply(rd *proto.Reader) error {
+	b := make([]byte, 4096)
+	for {
+		n, err := rd.Read(b)
+		if err != nil {
+			break
+		}
+		cmd.val = append(cmd.val, b[:n]...)
+	}
+	return nil
+}
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 type StringSliceCmd struct {
 	baseCmd

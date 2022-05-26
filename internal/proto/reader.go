@@ -45,6 +45,10 @@ func (r *Reader) Reset(rd io.Reader) {
 	r.rd.Reset(rd)
 }
 
+func (r *Reader) Read(b []byte) (int, error) {
+	return r.rd.Read(b)
+}
+
 func (r *Reader) ReadLine() ([]byte, error) {
 	line, isPrefix, err := r.rd.ReadLine()
 	if err != nil {
