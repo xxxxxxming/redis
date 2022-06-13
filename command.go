@@ -672,39 +672,56 @@ func (cmd *FloatCmd) readReply(rd *proto.Reader) error {
 }
 
 //------------------------------------------------------------------------------
-type ByteSliceCmd struct {
+type DesignFormList1 struct {
 	baseCmd
 
 	val []byte
 }
 
-var _ Cmder = (*ByteSliceCmd)(nil)
+var _ Cmder = (*DesignFormList1)(nil)
 
-func NewByteSliceCmd(args ...interface{}) *ByteSliceCmd {
-	return &ByteSliceCmd{
+func NewDesignFormList1Cmd(args ...interface{}) *DesignFormList1 {
+	return &DesignFormList1{
 		baseCmd: baseCmd{_args: args},
 	}
 }
-func (cmd *ByteSliceCmd) Val() []byte {
+func (cmd *DesignFormList1) Val() []byte {
 	return cmd.val
 }
 
-func (cmd *ByteSliceCmd) Result() ([]byte, error) {
+func (cmd *DesignFormList1) Result() ([]byte, error) {
 	return cmd.Val(), cmd.Err()
 }
 
-func (cmd *ByteSliceCmd) String() string {
+func (cmd *DesignFormList1) String() string {
 	return cmdString(cmd, cmd.val)
 }
 
-func (cmd *ByteSliceCmd) readReply(rd *proto.Reader) error {
-	b := make([]byte, 4096)
+func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
+	b := make([]byte, 1024)
+	flag := false
+	last := byte(0)
 	for {
 		n, err := rd.Read(b)
 		if err != nil {
 			break
 		}
-		cmd.val = append(cmd.val, b[:n]...)
+
+		for _, d := range b[:n] {
+			if flag {
+				// "=34   ":=58
+				if d == 34 || d == 58 {
+					last = d
+					continue
+				} else if d == 44 { // ,=44
+					flag = false
+				}
+				cmd.val = append(cmd.val, d)
+			} else if (d == 69 || d == 97) && last == 34 {
+				flag = true
+			}
+			last = d
+		}
 	}
 	return nil
 }

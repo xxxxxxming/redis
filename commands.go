@@ -1114,8 +1114,8 @@ func (c *cmdable) LRange(key string, start, stop int64) *StringSliceCmd {
 	return cmd
 }
 
-func (c *cmdable) LRanges(key string, start, stop int64) *ByteSliceCmd {
-	cmd := NewByteSliceCmd(
+func (c *cmdable) LRangemList1(key string, start, stop int64) *DesignFormList1 {
+	cmd := NewDesignFormList1Cmd(
 		"lrange",
 		key,
 		start,
