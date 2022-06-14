@@ -2,6 +2,7 @@ package redis
 
 import (
 	"fmt"
+	"math"
 	"net"
 	"strconv"
 	"strings"
@@ -674,22 +675,23 @@ func (cmd *FloatCmd) readReply(rd *proto.Reader) error {
 //------------------------------------------------------------------------------
 type DesignFormList1 struct {
 	baseCmd
-
-	val []byte
+	interval int
+	val      []float64
 }
 
 var _ Cmder = (*DesignFormList1)(nil)
 
-func NewDesignFormList1Cmd(args ...interface{}) *DesignFormList1 {
+func NewDesignFormList1Cmd(interval int, args ...interface{}) *DesignFormList1 {
 	return &DesignFormList1{
-		baseCmd: baseCmd{_args: args},
+		interval: interval,
+		baseCmd:  baseCmd{_args: args},
 	}
 }
-func (cmd *DesignFormList1) Val() []byte {
+func (cmd *DesignFormList1) Val() []float64 {
 	return cmd.val
 }
 
-func (cmd *DesignFormList1) Result() ([]byte, error) {
+func (cmd *DesignFormList1) Result() ([]float64, error) {
 	return cmd.Val(), cmd.Err()
 }
 
@@ -701,12 +703,20 @@ func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
 	b := make([]byte, 1024)
 	flag := false
 	last := byte(0)
+	if cmd.interval == 0 {
+		cmd.interval = 1
+	}
+	ecgSum := float64(0)
+	icgSum := float64(0)
+	commaFlag := 0
+	tmp := []byte{}
+	internal := cmd.interval * 2 // 每隔多少点取一次平均值
+	fmt.Println("internal", internal)
 	for {
 		n, err := rd.Read(b)
 		if err != nil {
 			break
 		}
-
 		for _, d := range b[:n] {
 			if flag {
 				// "=34   ":=58
@@ -715,8 +725,34 @@ func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
 					continue
 				} else if d == 44 { // ,=44
 					flag = false
+					commaFlag++
+					if commaFlag%2 == 1 {
+						// ecg
+						ecgSum += ByteToFloat64(tmp)
+						fmt.Println("ecgSum", ecgSum)
+						tmp = []byte{}
+					} else if commaFlag%2 == 0 {
+						//icg
+						icgSum += ByteToFloat64(tmp)
+						fmt.Println("icgSum", icgSum)
+						tmp = []byte{}
+					}
+					if commaFlag == internal {
+						// get avg
+						commaFlag = 0
+						ecgSum = ecgSum / 8 / 6500 * 10000
+						ecgSum = math.Round((ecgSum * 2)) / 10000 // *2 display -1 to 1
+
+						icgSum = icgSum / 800.0 / 2 / 600 * 100000
+						icgSum = math.Round((icgSum)*2) / 100000 // *2 display -1 to 1
+						cmd.val = append(cmd.val, ecgSum, icgSum)
+
+						ecgSum = float64(0)
+						icgSum = float64(0)
+					}
+				} else {
+					tmp = append(tmp, d)
 				}
-				cmd.val = append(cmd.val, d)
 			} else if (d == 69 || d == 97) && last == 34 {
 				flag = true
 			}
