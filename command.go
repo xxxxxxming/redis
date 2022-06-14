@@ -676,7 +676,7 @@ func (cmd *FloatCmd) readReply(rd *proto.Reader) error {
 type DesignFormList1 struct {
 	baseCmd
 	interval int
-	val      []float64
+	val      []byte
 }
 
 var _ Cmder = (*DesignFormList1)(nil)
@@ -687,11 +687,11 @@ func NewDesignFormList1Cmd(interval int, args ...interface{}) *DesignFormList1 {
 		baseCmd:  baseCmd{_args: args},
 	}
 }
-func (cmd *DesignFormList1) Val() []float64 {
+func (cmd *DesignFormList1) Val() []byte {
 	return cmd.val
 }
 
-func (cmd *DesignFormList1) Result() ([]float64, error) {
+func (cmd *DesignFormList1) Result() ([]byte, error) {
 	return cmd.Val(), cmd.Err()
 }
 
@@ -708,10 +708,11 @@ func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
 	}
 	ecgSum := float64(0)
 	icgSum := float64(0)
+	ecgStr := ""
+	icgStr := ""
 	commaFlag := 0
 	tmp := []byte{}
 	internal := cmd.interval * 2 // 每隔多少点取一次平均值
-	fmt.Println("internal", internal)
 	for {
 		n, err := rd.Read(b)
 		if err != nil {
@@ -729,12 +730,10 @@ func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
 					if commaFlag%2 == 1 {
 						// ecg
 						ecgSum += ByteToFloat64(tmp)
-						fmt.Println("ecgSum", ecgSum)
 						tmp = []byte{}
 					} else if commaFlag%2 == 0 {
 						//icg
 						icgSum += ByteToFloat64(tmp)
-						fmt.Println("icgSum", icgSum)
 						tmp = []byte{}
 					}
 					if commaFlag == internal {
@@ -742,11 +741,14 @@ func (cmd *DesignFormList1) readReply(rd *proto.Reader) error {
 						commaFlag = 0
 						ecgSum = ecgSum / 8 / 6500 * 10000
 						ecgSum = math.Round((ecgSum * 2)) / 10000 // *2 display -1 to 1
-
+						ecgStr = strconv.FormatFloat(ecgSum, 'f', 2, 64)
+						cmd.val = append(cmd.val, []byte(ecgStr)...)
+						cmd.val = append(cmd.val, d)
 						icgSum = icgSum / 800.0 / 2 / 600 * 100000
 						icgSum = math.Round((icgSum)*2) / 100000 // *2 display -1 to 1
-						cmd.val = append(cmd.val, ecgSum, icgSum)
-
+						icgStr = strconv.FormatFloat(icgSum, 'f', 2, 64)
+						cmd.val = append(cmd.val, []byte(icgStr)...)
+						cmd.val = append(cmd.val, d)
 						ecgSum = float64(0)
 						icgSum = float64(0)
 					}

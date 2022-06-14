@@ -1,7 +1,6 @@
 package redis
 
 import (
-	"fmt"
 	"math"
 )
 
@@ -49,6 +48,5 @@ func ByteToFloat64(b []byte) float64 {
 		multiplier = -1
 	}
 	v := ByteToInt(b)
-	fmt.Println(v)
 	return float64(v) * multiplier
 }
